@@ -1,4 +1,3 @@
-// src/pages/CreateJournal.jsx
 import { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -6,13 +5,15 @@ import { useNavigate } from 'react-router-dom';
 function CreateJournal() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [emotion, setEmotion] = useState(null);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      const token = localStorage.getItem('token'); // Lấy token sau khi login
+      const token = localStorage.getItem('token');
+
       const response = await axios.post('http://localhost:5000/api/journals', {
         title,
         content,
@@ -23,7 +24,10 @@ function CreateJournal() {
       });
 
       console.log('Đã tạo:', response.data);
-      navigate('/dashboard'); // chuyển về trang chính
+
+      // Hiển thị kết quả cảm xúc ngay sau khi gửi
+      setEmotion(response.data.data.mood);
+
     } catch (error) {
       console.error('Lỗi khi tạo bài viết:', error.response?.data || error.message);
       alert('Tạo bài viết thất bại');
@@ -63,6 +67,14 @@ function CreateJournal() {
           Gửi bài viết
         </button>
       </form>
+
+      {emotion && (
+        <div className="mt-6 p-4 bg-gray-100 rounded">
+          <h3 className="text-lg font-bold mb-2">Kết quả cảm xúc:</h3>
+          <p><strong>Cảm xúc:</strong> {emotion.label}</p>
+          <p><strong>Điểm số:</strong> {(emotion.score * 100).toFixed(2)}%</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,64 +1,77 @@
-const express = require('express');
-const router = express.Router();
-const Journal = require('../models/Journal');
-const auth = require('../middleware/auth'); // ✅ Đúng đường dẫn middleware
-const analyzeMood = require('../utils/moodAnalysis');
+const router = require("express").Router();
+const Journal = require("../models/Journal");
+const verifyToken = require("../middleware/verifyToken");
+const axios = require("axios");
 
-// Tạo mới bài viết
-router.post('/', auth, async (req, res) => {
-  try {
+router.post("/", verifyToken, async (req, res) => {
     const { title, content } = req.body;
-    const userId = req.user?.id || req.user?._id; // ✅ An toàn hơn
 
-    if (!userId) {
-      return res.status(401).json({ message: 'Không xác định được người dùng' });
+    try {
+        const response = await axios.post(
+            "https://api-inference.huggingface.co/models/michellejieli/emotion_text_classifier",
+            { inputs: content },
+            {
+                headers: {
+                    Authorization: `Bearer ${process.env.HF_API_KEY}`,
+                },
+            }
+        );
+
+        const predictions = response.data[0];
+
+        if (!predictions || predictions.length === 0) {
+            return res.status(400).json({
+                error: "Phân tích cảm xúc thất bại: Kết quả trống.",
+                rawData: response.data,
+            });
+        }
+
+        const topEmotion = predictions.reduce((prev, current) => {
+            return (prev.score > current.score) ? prev : current;
+        });
+
+        // Lưu vào database theo schema hiện tại
+        const newJournal = new Journal({
+            userId: req.user.id,
+            title,
+            content,
+            moodLabel: topEmotion.label,
+            moodScore: topEmotion.score,
+        });
+
+        const savedJournal = await newJournal.save();
+
+        // Trả về đúng định dạng bạn muốn
+        res.status(201).json({
+            message: "Tạo nhật ký thành công",
+            data: {
+                _id: savedJournal._id,
+                userId: savedJournal.userId,
+                title: savedJournal.title,
+                content: savedJournal.content,
+                mood: {
+                    label: savedJournal.moodLabel,
+                    score: savedJournal.moodScore
+                },
+                date: savedJournal.date
+            }
+        });
+
+    } catch (err) {
+        console.error("Lỗi khi gọi API HuggingFace:", err.message);
+
+        if (err.response) {
+            return res.status(500).json({
+                error: "Lỗi từ Hugging Face API",
+                details: err.response.data,
+            });
+        }
+
+        res.status(500).json({
+            error: "Lỗi server khi tạo nhật ký",
+            details: err.message,
+        });
     }
-
-    // Gọi phân tích tâm trạng từ AI
-    console.log('Content gửi phân tích:', content);
-    const moodResult = await analyzeMood(content); // Trả về { label, score }
-    console.log('Kết quả phân tích mood:', moodResult);
-
-    if (!moodResult || !moodResult.label || moodResult.score === undefined) {
-      return res.status(500).json({ message: 'Phân tích tâm trạng thất bại' });
-    }
-
-    const journal = new Journal({
-      title,
-      content,
-      moodLabel: moodResult.label,
-      moodScore: moodResult.score,
-      userId: userId
-    });
-
-    await journal.save();
-    res.status(201).json(journal);
-  } catch (error) {
-    console.error('Lỗi khi tạo bài viết:', error);
-    res.status(500).json({ message: 'Lỗi server khi tạo bài viết' });
-  }
-});
-
-// Lấy danh sách bài viết
-router.get('/', auth, async (req, res) => {
-  try {
-    const userId = req.user?.id || req.user?._id;
-    const journals = await Journal.find({ userId }).sort({ date: -1 });
-    res.json(journals);
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi lấy bài viết' });
-  }
-});
-
-// Xóa bài viết
-router.delete('/:id', auth, async (req, res) => {
-  try {
-    const userId = req.user?.id || req.user?._id;
-    await Journal.deleteOne({ _id: req.params.id, userId });
-    res.json({ message: 'Đã xóa' });
-  } catch (error) {
-    res.status(500).json({ message: 'Lỗi server khi xóa bài viết' });
-  }
 });
 
 module.exports = router;
