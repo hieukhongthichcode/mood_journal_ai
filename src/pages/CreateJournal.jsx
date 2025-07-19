@@ -72,7 +72,7 @@ function CreateJournal() {
         <div className="mt-6 p-4 bg-gray-100 rounded">
           <h3 className="text-lg font-bold mb-2">Kết quả cảm xúc:</h3>
           <p><strong>Cảm xúc:</strong> {emotion.label}</p>
-          <p><strong>Điểm số:</strong> {(emotion.score * 100).toFixed(2)}%</p>
+          <p><strong>Mức độ chắc chắn:</strong> {(emotion.score * 100).toFixed(2)}%</p>
         </div>
       )}
     </div>

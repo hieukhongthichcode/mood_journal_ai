@@ -3,6 +3,44 @@ const Journal = require("../models/Journal");
 const verifyToken = require("../middleware/verifyToken");
 const axios = require("axios");
 
+// Danh sách từ khóa song ngữ
+const emotionKeywords = {
+    joy: [
+        "vui", "hạnh phúc", "phấn khởi", "hào hứng", "yêu đời", "tuyệt vời",
+        "happy", "joy", "excited", "delighted", "cheerful", "great"
+    ],
+    anger: [
+        "tức giận", "giận", "bực", "nổi điên", "bực bội",
+        "angry", "mad", "furious", "rage", "annoyed"
+    ],
+    sadness: [
+        "buồn", "chán", "tệ", "khóc", "mệt mỏi", "kiệt sức",
+        "sad", "upset", "depressed", "cry", "exhausted"
+    ],
+    fear: [
+        "sợ", "hoảng loạn", "run", "lo lắng", "bất an",
+        "scared", "afraid", "fear", "panic", "anxious"
+    ],
+    disgust: [
+        "ghê tởm", "khó chịu", "kinh tởm", "gớm",
+        "disgust", "disgusted", "gross", "nauseous"
+    ],
+    neutral: []
+};
+
+// Hàm nhận diện từ khóa
+function detectEmotionByKeywords(text) {
+    const textLower = text.toLowerCase();
+    for (const [emotion, keywords] of Object.entries(emotionKeywords)) {
+        for (const keyword of keywords) {
+            if (textLower.includes(keyword)) {
+                return emotion;
+            }
+        }
+    }
+    return null; // Không tìm thấy từ khóa
+}
+
 router.post("/", verifyToken, async (req, res) => {
     const { title, content } = req.body;
 
@@ -26,22 +64,32 @@ router.post("/", verifyToken, async (req, res) => {
             });
         }
 
+        // Lấy cảm xúc có điểm cao nhất từ model
         const topEmotion = predictions.reduce((prev, current) => {
             return (prev.score > current.score) ? prev : current;
         });
 
-        // Lưu vào database theo schema hiện tại
+        // Kiểm tra từ khóa để override kết quả nếu cần
+        const keywordEmotion = detectEmotionByKeywords(content);
+
+        let finalEmotionLabel = topEmotion.label;
+        if (keywordEmotion) {
+            console.log(`Override cảm xúc từ model thành "${keywordEmotion}" do khớp từ khóa.`);
+            finalEmotionLabel = keywordEmotion;
+        }
+
+        // Lưu vào database
         const newJournal = new Journal({
             userId: req.user.id,
             title,
             content,
-            moodLabel: topEmotion.label,
-            moodScore: topEmotion.score,
+            moodLabel: finalEmotionLabel,
+            moodScore: topEmotion.score // vẫn giữ điểm số gốc để tham khảo
         });
 
         const savedJournal = await newJournal.save();
 
-        // Trả về đúng định dạng bạn muốn
+        // Trả về cho frontend
         res.status(201).json({
             message: "Tạo nhật ký thành công",
             data: {
