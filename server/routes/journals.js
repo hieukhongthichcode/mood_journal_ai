@@ -41,6 +41,7 @@ function detectEmotionByKeywords(text) {
     return null; // Không tìm thấy từ khóa
 }
 
+// POST /api/journals
 router.post("/", verifyToken, async (req, res) => {
     const { title, content } = req.body;
 
@@ -64,32 +65,28 @@ router.post("/", verifyToken, async (req, res) => {
             });
         }
 
-        // Lấy cảm xúc có điểm cao nhất từ model
         const topEmotion = predictions.reduce((prev, current) => {
-            return (prev.score > current.score) ? prev : current;
+            return prev.score > current.score ? prev : current;
         });
 
-        // Kiểm tra từ khóa để override kết quả nếu cần
         const keywordEmotion = detectEmotionByKeywords(content);
-
         let finalEmotionLabel = topEmotion.label;
+
         if (keywordEmotion) {
             console.log(`Override cảm xúc từ model thành "${keywordEmotion}" do khớp từ khóa.`);
             finalEmotionLabel = keywordEmotion;
         }
 
-        // Lưu vào database
         const newJournal = new Journal({
             userId: req.user.id,
             title,
             content,
             moodLabel: finalEmotionLabel,
-            moodScore: topEmotion.score // vẫn giữ điểm số gốc để tham khảo
+            moodScore: topEmotion.score
         });
 
         const savedJournal = await newJournal.save();
 
-        // Trả về cho frontend
         res.status(201).json({
             message: "Tạo nhật ký thành công",
             data: {
@@ -119,6 +116,25 @@ router.post("/", verifyToken, async (req, res) => {
             error: "Lỗi server khi tạo nhật ký",
             details: err.message,
         });
+    }
+});
+
+// GET /api/journals/moods
+router.get("/moods", verifyToken, async (req, res) => {
+    try {
+        const data = await Journal.find({ userId: req.user.id }).sort({ date: 1 });
+
+        const moodData = data.map(entry => ({
+            date: entry.date.toISOString().split("T")[0],
+            mood: {
+                label: entry.moodLabel,
+                score: entry.moodScore
+            }
+        }));
+
+        res.json(moodData);
+    } catch (error) {
+        res.status(500).json({ message: "Lỗi server khi lấy mood." });
     }
 });
 

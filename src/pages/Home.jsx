@@ -1,15 +1,65 @@
 import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useContext } from "react";
+import MoodChart from "../components/MoodChart";
+import { AuthContext } from "../context/AuthContext";
 
 function Home() {
   const navigate = useNavigate();
+  const { token } = useContext(AuthContext);
+
+  const [chartData, setChartData] = useState({ labels: [], data: [] });
 
   const handleClick = () => {
     navigate('/create');
   };
 
+  useEffect(() => {
+  const fetchMoodData = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/moods`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`Fetch failed with status ${res.status}`);
+      }
+
+      const result = await res.json();
+
+      const moodMap = {
+        sad: 1,
+        neutral: 2,
+        okay: 3,
+        good: 4,
+        happy: 5,
+      };
+
+      const labels = result.map(entry => {
+        const date = new Date(entry.createdAt);
+        return date.toLocaleDateString();
+      });
+
+      const data = result.map(entry => {
+        return typeof entry.mood === "string"
+          ? moodMap[entry.mood.toLowerCase()] || 0
+          : entry.mood;
+      });
+
+      setChartData({ labels, data });
+    } catch (error) {
+      console.error("Lỗi khi fetch mood:", error);
+    }
+  };
+
+  fetchMoodData();
+}, []);
+
+
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center transition-colors duration-300"
+      className="min-h-screen flex flex-col items-center py-12 transition-colors duration-300"
       style={{
         backgroundImage:
           'linear-gradient(to bottom left, #a1c4fd 70%, #fbc2eb 100%)',
@@ -31,6 +81,11 @@ function Home() {
         >
           Thêm nhật ký cảm xúc
         </button>
+      </div>
+
+      {/* Biểu đồ mood */}
+      <div className="z-10 mt-12 w-full px-6">
+        <MoodChart labels={chartData.labels} data={chartData.data} />
       </div>
     </div>
   );

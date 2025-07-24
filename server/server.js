@@ -1,33 +1,38 @@
 const express = require("express");
+const app = express();
 const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
-require('dotenv').config();
 
-
-dotenv.config(); // ✅ Đặt dotenv trước để các biến môi trường được nạp
-
-const journalsRoute = require('./routes/journals');
-const authRoute = require('./routes/auth'); // ✅ Import route
-
-const app = express(); // ✅ Phải có trước khi dùng app.use
+// Load biến môi trường từ .env
+dotenv.config();
 const PORT = process.env.PORT || 5000;
+
+// Import route
+const authRoute = require('./routes/auth');
+const journalsRoute = require('./routes/journals');
+const moodsRoute = require('./routes/moods');
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
 // Routes
-app.use('/api/journals', journalsRoute); // Route cho nhật ký
-app.use('/api/auth', authRoute);         // Route cho đăng ký / đăng nhập
+app.use('/api/auth', authRoute);          // Đăng ký / đăng nhập
+app.use('/api/journals', journalsRoute);  // Ghi nhật ký
+app.use('/api/moods', moodsRoute);        // Lấy dữ liệu mood cho biểu đồ
 
+// Route kiểm tra
 app.get("/", (req, res) => {
   res.send("🎉 Mood Journal API is running!");
 });
 
 // MongoDB connection
 mongoose
-  .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => {
     console.log("✅ MongoDB connected");
     app.listen(PORT, () => {
