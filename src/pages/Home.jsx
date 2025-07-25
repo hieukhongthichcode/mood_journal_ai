@@ -14,48 +14,50 @@ function Home() {
   };
 
   useEffect(() => {
-  const fetchMoodData = async () => {
-    try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/moods`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+    if (!token) return; // ✅ Không fetch nếu chưa có token
 
-      if (!res.ok) {
-        throw new Error(`Fetch failed with status ${res.status}`);
+    const fetchMoodData = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/moods`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error(`Fetch failed with status ${res.status}`);
+        }
+
+        const result = await res.json();
+
+        const moodMap = {
+          sad: 1,
+          neutral: 2,
+          okay: 3,
+          good: 4,
+          happy: 5,
+        };
+
+        const labels = result.map(entry => {
+          const date = new Date(entry.createdAt);
+          return date.toLocaleDateString();
+        });
+
+        const data = result.map(entry => {
+  return typeof entry.moodLabel === "string"
+    ? moodMap[entry.moodLabel.toLowerCase()] || 0
+    : entry.moodScore || 0;
+});
+
+
+        setChartData({ labels, data });
+      } catch (error) {
+        console.error("Lỗi khi fetch mood:", error);
       }
+    };
 
-      const result = await res.json();
-
-      const moodMap = {
-        sad: 1,
-        neutral: 2,
-        okay: 3,
-        good: 4,
-        happy: 5,
-      };
-
-      const labels = result.map(entry => {
-        const date = new Date(entry.createdAt);
-        return date.toLocaleDateString();
-      });
-
-      const data = result.map(entry => {
-        return typeof entry.mood === "string"
-          ? moodMap[entry.mood.toLowerCase()] || 0
-          : entry.mood;
-      });
-
-      setChartData({ labels, data });
-    } catch (error) {
-      console.error("Lỗi khi fetch mood:", error);
-    }
-  };
-
-  fetchMoodData();
-}, []);
-
+    fetchMoodData();
+  }, [token]); // ✅ useEffect chạy lại khi token sẵn sàng
 
   return (
     <div

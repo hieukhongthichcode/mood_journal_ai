@@ -1,8 +1,11 @@
 const jwt = require("jsonwebtoken");
 
 const authMiddleware = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+  console.log("JWT_SECRET loaded:", process.env.JWT_SECRET); // ✅ phải in ra được 'supersecret123'
 
+  const authHeader = req.headers.authorization;
+  console.log("Authorization Header:", authHeader);
+  
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({ message: "Không có token" });
   }

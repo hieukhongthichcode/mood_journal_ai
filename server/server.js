@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require("express");
 const app = express();
 const mongoose = require("mongoose");
@@ -5,7 +6,6 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 
 // Load biến môi trường từ .env
-dotenv.config();
 const PORT = process.env.PORT || 5000;
 
 // Import route

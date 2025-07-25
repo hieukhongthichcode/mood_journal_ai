@@ -1,31 +1,30 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext'; // ← Sửa đường dẫn nếu khác
 
 function CreateJournal() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [emotion, setEmotion] = useState(null);
   const navigate = useNavigate();
+  const { token } = useContext(AuthContext); // ← Lấy token đúng
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      const token = localStorage.getItem('token');
-
       const response = await axios.post('http://localhost:5000/api/journals', {
         title,
         content,
       }, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${token}`, // ← Token đúng
         }
       });
 
       console.log('Đã tạo:', response.data);
 
-      // Hiển thị kết quả cảm xúc ngay sau khi gửi
       setEmotion(response.data.data.mood);
 
     } catch (error) {
@@ -73,6 +72,13 @@ function CreateJournal() {
           <h3 className="text-lg font-bold mb-2">Kết quả cảm xúc:</h3>
           <p><strong>Cảm xúc:</strong> {emotion.label}</p>
           <p><strong>Mức độ chắc chắn:</strong> {(emotion.score * 100).toFixed(2)}%</p>
+
+          <button
+            onClick={() => navigate('/home')}
+            className="mt-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          >
+            Xem biểu đồ cảm xúc
+          </button>
         </div>
       )}
     </div>

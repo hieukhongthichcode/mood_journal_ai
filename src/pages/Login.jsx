@@ -1,10 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
-
 
 function Login() {
   const { setUser } = useContext(AuthContext);
@@ -32,28 +30,32 @@ function Login() {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  try {
-    const res = await axios.post("http://localhost:5000/api/auth/login", {
-      email: formData.email,
-      password: formData.password,
-    });
-     localStorage.setItem('token', res.data.token);
-     navigate('/dashboard');
-    // ✅ Lưu thông tin vào localStorage và cập nhật context
-    localStorage.setItem("token", res.data.token);
-    localStorage.setItem("user", JSON.stringify(res.data.user));
-    setUser(res.data.user); // cập nhật context
+    e.preventDefault();
+    try {
+      const res = await axios.post("http://localhost:5000/api/auth/login", {
+        email: formData.email,
+        password: formData.password,
+      });
 
-    // ✅ Thông báo & điều hướng sau khi thành công
-    toast.success("🎉 Đăng nhập thành công!");
-    navigate("/home");
-  } catch (error) {
-    const msg = error.response?.data?.message || "❌ Đăng nhập thất bại!";
-    toast.error(msg);
-  }
-};
+      // ✅ Gộp user và token lại
+      const fullUser = {
+        ...res.data.user,
+        token: res.data.token,
+      };
 
+      // ✅ Lưu vào localStorage
+      localStorage.setItem("user", JSON.stringify(fullUser));
+
+      // ✅ Cập nhật context
+      setUser(fullUser);
+
+      toast.success("🎉 Đăng nhập thành công!");
+      navigate("/home");
+    } catch (error) {
+      const msg = error.response?.data?.message || "❌ Đăng nhập thất bại!";
+      toast.error(msg);
+    }
+  };
 
   return (
     <div className="flex justify-center items-center h-screen bg-[#f5f7fa] dark:bg-gray-900 transition-colors">
